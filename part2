@@ -26,7 +26,7 @@ def set_default_values():
     print("Initialize Default Values")
     GPIO.output(TRIGGER_PIN, GPIO.LOW)
     GPIO.output(LED_PIN, GPIO.LOW)
-    GPIO.output(buzzer, GPIO.LOW)
+    GPIO.output(buzzer, GPIO.HIGH)
 
 def send_data_to_thingSpeak(calculated_distance):
     # JSON payload to send data to ThingSpeak
