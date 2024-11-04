@@ -1,0 +1,84 @@
+import RPi.GPIO as GPIO
+import time
+import requests
+
+
+TRIGGER_PIN = 23
+ECHO_PIN = 24
+LED_PIN = 26
+buzzer = 17
+
+url = "https://api.thingspeak.com/update"
+api_key = "YOUR_API_KEY"  # update your API Key here
+
+led_status = 0
+buzzer_status = 0
+
+def setup_rpi():
+    print("Setup Pins")
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(TRIGGER_PIN, GPIO.OUT)
+    GPIO.setup(ECHO_PIN, GPIO.IN)
+    GPIO.setup(LED_PIN, GPIO.OUT)
+    GPIO.setup(buzzer, GPIO.OUT)
+
+def set_default_values():
+    print("Initialize Default Values")
+    GPIO.output(TRIGGER_PIN, GPIO.LOW)
+    GPIO.output(LED_PIN, GPIO.LOW)
+    GPIO.output(buzzer, GPIO.LOW)
+
+def send_data_to_thingSpeak(calculated_distance):
+    # JSON payload to send data to ThingSpeak
+    payload = {'api_key': api_key, 'field1': calculated_distance, 'field2': led_status, 'field3': buzzer_status}
+    requests.post(url, data=payload)
+     
+def check_for_object(calculated_distance):
+    global led_status
+    global buzzer_status
+    if calculated_distance < 15:
+        led_status = 1
+        buzzer_status = 1
+        print("Object is too close")
+        GPIO.output(LED_PIN, GPIO.HIGH)
+        GPIO.output(buzzer, GPIO.HIGH)
+    else:
+        led_status = 0
+        buzzer_status = 0
+        print("No Object Detected")
+        GPIO.output(LED_PIN, GPIO.LOW)
+        GPIO.output(buzzer, GPIO.LOW)
+
+def estimate_distance():
+    while 1:
+        # Send wave
+        GPIO.output(TRIGGER_PIN, True)
+        time.sleep(0.00001)  # 10 microsecond delay
+        GPIO.output(TRIGGER_PIN, False)
+
+        # Read wave
+        while GPIO.input(ECHO_PIN) == 0:
+            start_of_wave = time.time()
+
+        while GPIO.input(ECHO_PIN) == 1:
+            end_of_wave = time.time()
+
+        pulse_duration = end_of_wave - start_of_wave
+        calculated_distance = 34300 * pulse_duration / 2
+        calculated_distance = round(calculated_distance, 2)
+
+        GPIO.output(TRIGGER_PIN, False)
+       
+        print("Distance:", calculated_distance, "cm")
+
+        check_for_object(calculated_distance)
+        send_data_to_thingSpeak(calculated_distance)
+
+        time.sleep(1)
+
+if __name__ == '__main__':
+    setup_rpi()
+    set_default_values()
+    print("Prepare sensor")
+    time.sleep(1)
+    estimate_distance()  # This runs forever, unless crash or CTRL + C
